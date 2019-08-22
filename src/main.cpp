@@ -1,22 +1,48 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
+#include <fstream>
+#include <sstream>
 #include <algorithm>
 #include <string>
 #include <vector>
 #include <stdlib.h>
 #include <stdio.h>
 
+GLuint theProgram;
+GLuint vertexBufferObject;
+GLuint vao;
 
-const float vertexPositions[] = {
-	0.75f, 0.75f, 0.0f, 1.0f,
-	0.75f, -0.75f, 0.0f, 1.0f,
-	-0.75f, -0.75f, 0.0f, 1.0f,
+const float vertexData[] = {
+     0.0f,    0.5f, 0.0f, 1.0f,
+     0.5f, -0.366f, 0.0f, 1.0f,
+    -0.5f, -0.366f, 0.0f, 1.0f,
+     1.0f,    0.0f, 0.0f, 1.0f,
+     0.0f,    1.0f, 0.0f, 1.0f,
+     0.0f,    0.0f, 1.0f, 1.0f,
 };
 
-GLuint theProgram;
-GLuint positionBufferObject;
-GLuint vao;
+const std::string strVertexShader(
+    "#version 330\n"
+    "layout (location = 0) in vec4 position;\n"
+    "layout (location = 1) in vec4 color;\n"
+    "smooth out vec4 theColor;\n"
+    "void main()\n"
+    "{\n"
+    "	gl_Position = position;\n"
+    "	theColor = color;\n"
+    "}\n"
+);
+
+const std::string strFragmentShader(
+    "#version 330\n"
+    "smooth in vec4 theColor;\n"
+    "out vec4 outputColor;\n"
+    "void main()\n"
+    "{\n"
+    "	outputColor = theColor;\n"
+    "}\n"
+);
 
 GLuint CreateShader(GLenum eShaderType, const std::string &strShaderFile)
 {
@@ -79,24 +105,6 @@ GLuint CreateProgram(const std::vector<GLuint> &shaderList)
 	return program;
 }
 
-const std::string strVertexShader(
-	"#version 330\n"
-	"layout(location = 0) in vec4 position;\n"
-	"void main()\n"
-	"{\n"
-	"   gl_Position = position;\n"
-	"}\n"
-);
-
-const std::string strFragmentShader(
-	"#version 330\n"
-	"out vec4 outputColor;\n"
-	"void main()\n"
-	"{\n"
-	"   outputColor = vec4(1.0f, 1.0f, 1.0f, 1.0f);\n"
-	"}\n"
-);
-
 void InitializeProgram()
 {
 	std::vector<GLuint> shaderList;
@@ -111,10 +119,10 @@ void InitializeProgram()
 
 void InitializeVertexBuffer()
 {
-	glGenBuffers(1, &positionBufferObject);
+	glGenBuffers(1, &vertexBufferObject);
 
-	glBindBuffer(GL_ARRAY_BUFFER, positionBufferObject);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertexPositions), vertexPositions, GL_STATIC_DRAW);
+	glBindBuffer(GL_ARRAY_BUFFER, vertexBufferObject);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertexData), vertexData, GL_STATIC_DRAW);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
@@ -133,20 +141,37 @@ void init()
 //If you need continuous updates of the screen, call glutPostRedisplay() at the end of the function.
 void display()
 {
-	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 	glClear(GL_COLOR_BUFFER_BIT);
 
 	glUseProgram(theProgram);
 
-	glBindBuffer(GL_ARRAY_BUFFER, positionBufferObject);
+	glBindBuffer(GL_ARRAY_BUFFER, vertexBufferObject);
 	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
 	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0);
+	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, (void*)48);
 
 	glDrawArrays(GL_TRIANGLES, 0, 3);
 
 	glDisableVertexAttribArray(0);
+	glDisableVertexAttribArray(1);
 	glUseProgram(0);
 }
+
+void logSecondsPerFrame(double &lastTime, int &nbFrames) 
+{
+    // Measure speed
+    double currentTime = glfwGetTime();
+    nbFrames++;
+    if ( currentTime - lastTime >= 1.0 ){ // If last prinf() was more than 1 sec ago
+        // printf and reset timer
+        printf("%f ms/frame\n", 1000.0/double(nbFrames));
+        nbFrames = 0;
+        lastTime += 1.0;
+    }
+}
+
 
 static void 
 error_callback(int error, const char* description)
@@ -178,7 +203,7 @@ int main(void)
     glfwWindowHint( GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE );
     glfwWindowHint( GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE ); 
 
-    window = glfwCreateWindow(640, 480, "Simple example", NULL, NULL);
+    window = glfwCreateWindow(640, 640, "Fucking Finally", NULL, NULL);
     if (!window)
     {
         glfwTerminate();
@@ -195,11 +220,18 @@ int main(void)
 
     // NOTE: OpenGL error checks have been omitted for brevity
 
+    // Application initialization
     init();
+
+    double lastTime = glfwGetTime();
+    int nbFrames = 0;
 
     while (!glfwWindowShouldClose(window))
     {
+        logSecondsPerFrame(lastTime, nbFrames);
+
         display();
+
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
@@ -210,4 +242,3 @@ int main(void)
     exit(EXIT_SUCCESS);
 }
 
-//! [code]
