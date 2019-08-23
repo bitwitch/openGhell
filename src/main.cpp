@@ -1,80 +1,71 @@
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
-
+#include "graphics.h"
 #include <fstream>
 #include <sstream>
-#include <algorithm>
-#include <string>
-#include <vector>
 #include <stdlib.h>
 #include <stdio.h>
 
-GLuint theProgram;
-GLuint vertexBufferObject;
-GLuint vao;
+const std::string SHADER_DIR = "shaders/";
 
-const float vertexData[] = {
-     0.0f,    0.5f, 0.0f, 1.0f,
-     0.5f, -0.366f, 0.0f, 1.0f,
-    -0.5f, -0.366f, 0.0f, 1.0f,
-     1.0f,    0.0f, 0.0f, 1.0f,
-     0.0f,    1.0f, 0.0f, 1.0f,
-     0.0f,    0.0f, 1.0f, 1.0f,
-};
-
-const std::string strVertexShader(
-    "#version 330\n"
-    "layout (location = 0) in vec4 position;\n"
-    "layout (location = 1) in vec4 color;\n"
-    "smooth out vec4 theColor;\n"
-    "void main()\n"
-    "{\n"
-    "	gl_Position = position;\n"
-    "	theColor = color;\n"
-    "}\n"
-);
-
-const std::string strFragmentShader(
-    "#version 330\n"
-    "smooth in vec4 theColor;\n"
-    "out vec4 outputColor;\n"
-    "void main()\n"
-    "{\n"
-    "	outputColor = theColor;\n"
-    "}\n"
-);
-
-GLuint CreateShader(GLenum eShaderType, const std::string &strShaderFile)
+std::string FindFileOrThrow( const std::string &strBasename )
 {
-	GLuint shader = glCreateShader(eShaderType);
-	const char *strFileData = strShaderFile.c_str();
-	glShaderSource(shader, 1, &strFileData, NULL);
+    // try local dir
+    std::string strFilename = SHADER_DIR + strBasename;
+    std::ifstream testFile(strFilename.c_str());
+    if(testFile.is_open())
+        return strFilename;
+    
+    // try global dir
+    strFilename = "../" + SHADER_DIR + strBasename;
+    testFile.open(strFilename.c_str());
+    if(testFile.is_open())
+        return strFilename;
 
-	glCompileShader(shader);
+    throw std::runtime_error("Could not find the file " + strBasename);
+}
 
-	GLint status;
-	glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
-	if (status == GL_FALSE)
-	{
-		GLint infoLogLength;
-		glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &infoLogLength);
+GLuint LoadShader(GLenum eShaderType, const std::string &strShaderFilename)
+{
+    std::string strFilename = FindFileOrThrow(strShaderFilename);
+    std::ifstream shaderFile(strFilename.c_str());
+    std::stringstream shaderData;
+    shaderData << shaderFile.rdbuf();
+    shaderFile.close();
 
-		GLchar *strInfoLog = new GLchar[infoLogLength + 1];
-		glGetShaderInfoLog(shader, infoLogLength, NULL, strInfoLog);
+    GLuint shader = glCreateShader(eShaderType);
 
-		const char *strShaderType = NULL;
-		switch(eShaderType)
-		{
-		case GL_VERTEX_SHADER: strShaderType = "vertex"; break;
-		case GL_GEOMETRY_SHADER: strShaderType = "geometry"; break;
-		case GL_FRAGMENT_SHADER: strShaderType = "fragment"; break;
-		}
+    const GLchar *source = (const GLchar *)shaderData.str().c_str();
+    glShaderSource(shader, 1, &source, 0);
 
-		fprintf(stderr, "Compile failure in %s shader:\n%s\n", strShaderType, strInfoLog);
+    glCompileShader(shader);
+
+    // Handle compilation error
+    GLint isCompiled = 0;
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &isCompiled);
+    if(isCompiled == GL_FALSE)
+    {
+        GLint maxLength = 0;
+        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &maxLength);
+
+ 		GLchar *strInfoLog = new GLchar[maxLength + 1];
+		glGetShaderInfoLog(shader, maxLength, NULL, strInfoLog);
+        
+        glDeleteShader(shader);
+
+        char *strShaderType = NULL;
+        switch(eShaderType)
+        {
+        case GL_VERTEX_SHADER:   strShaderType = "vertex"; break;
+        case GL_GEOMETRY_SHADER: strShaderType = "geometry"; break;
+        case GL_FRAGMENT_SHADER: strShaderType = "fragment"; break;
+        }
+
+        fprintf(stderr, "Compile failure in %s shader:\n%s\n", 
+                strShaderType, strInfoLog);
 		delete[] strInfoLog;
-	}
+        throw;
+    }
 
-	return shader;
+    return shader;
 }
 
 GLuint CreateProgram(const std::vector<GLuint> &shaderList)
@@ -86,15 +77,19 @@ GLuint CreateProgram(const std::vector<GLuint> &shaderList)
 
 	glLinkProgram(program);
 
-	GLint status;
-	glGetProgramiv (program, GL_LINK_STATUS, &status);
-	if (status == GL_FALSE)
+    // Handle link error
+	GLint linkStatus;
+	glGetProgramiv (program, GL_LINK_STATUS, &linkStatus);
+	if (linkStatus == GL_FALSE)
 	{
 		GLint infoLogLength;
 		glGetProgramiv(program, GL_INFO_LOG_LENGTH, &infoLogLength);
-
 		GLchar *strInfoLog = new GLchar[infoLogLength + 1];
 		glGetProgramInfoLog(program, infoLogLength, NULL, strInfoLog);
+
+        glDeleteProgram(program);
+        std::for_each(shaderList.begin(), shaderList.end(), glDeleteShader);
+
 		fprintf(stderr, "Linker failure: %s\n", strInfoLog);
 		delete[] strInfoLog;
 	}
@@ -105,59 +100,39 @@ GLuint CreateProgram(const std::vector<GLuint> &shaderList)
 	return program;
 }
 
-void InitializeProgram()
-{
-	std::vector<GLuint> shaderList;
+//GLuint CreateShader(GLenum eShaderType, const std::string &strShaderFile)
+//{
+	//GLuint shader = glCreateShader(eShaderType);
+	//const char *strFileData = strShaderFile.c_str();
+	//glShaderSource(shader, 1, &strFileData, NULL);
 
-	shaderList.push_back(CreateShader(GL_VERTEX_SHADER, strVertexShader));
-	shaderList.push_back(CreateShader(GL_FRAGMENT_SHADER, strFragmentShader));
+	//glCompileShader(shader);
 
-	theProgram = CreateProgram(shaderList);
+	//GLint status;
+	//glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
+	//if (status == GL_FALSE)
+	//{
+		//GLint infoLogLength;
+		//glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &infoLogLength);
 
-	std::for_each(shaderList.begin(), shaderList.end(), glDeleteShader);
-}
+		//GLchar *strInfoLog = new GLchar[infoLogLength + 1];
+		//glGetShaderInfoLog(shader, infoLogLength, NULL, strInfoLog);
 
-void InitializeVertexBuffer()
-{
-	glGenBuffers(1, &vertexBufferObject);
+		//const char *strShaderType = NULL;
+		//switch(eShaderType)
+		//{
+		//case GL_VERTEX_SHADER: strShaderType = "vertex"; break;
+		//case GL_GEOMETRY_SHADER: strShaderType = "geometry"; break;
+		//case GL_FRAGMENT_SHADER: strShaderType = "fragment"; break;
+		//}
 
-	glBindBuffer(GL_ARRAY_BUFFER, vertexBufferObject);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertexData), vertexData, GL_STATIC_DRAW);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-}
+		//fprintf(stderr, "Compile failure in %s shader:\n%s\n", strShaderType, strInfoLog);
+		//delete[] strInfoLog;
+	//}
 
-//Called after the window and OpenGL are initialized. Called exactly once, before the main loop.
-void init()
-{
-	InitializeProgram();
-	InitializeVertexBuffer();
+	//return shader;
+//}
 
-	glGenVertexArrays(1, &vao);
-	glBindVertexArray(vao);
-}
-
-//Called to update the display.
-//You should call glutSwapBuffers after all of your rendering to display what you rendered.
-//If you need continuous updates of the screen, call glutPostRedisplay() at the end of the function.
-void display()
-{
-    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-	glClear(GL_COLOR_BUFFER_BIT);
-
-	glUseProgram(theProgram);
-
-	glBindBuffer(GL_ARRAY_BUFFER, vertexBufferObject);
-	glEnableVertexAttribArray(0);
-	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0);
-	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, (void*)48);
-
-	glDrawArrays(GL_TRIANGLES, 0, 3);
-
-	glDisableVertexAttribArray(0);
-	glDisableVertexAttribArray(1);
-	glUseProgram(0);
-}
 
 void logSecondsPerFrame(double &lastTime, int &nbFrames) 
 {
@@ -172,7 +147,6 @@ void logSecondsPerFrame(double &lastTime, int &nbFrames)
     }
 }
 
-
 static void 
 error_callback(int error, const char* description)
 {
@@ -185,9 +159,6 @@ key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
         glfwSetWindowShouldClose(window, GLFW_TRUE);
 }
-
-
-
 
 int main(void)
 {
@@ -223,12 +194,13 @@ int main(void)
     // Application initialization
     init();
 
-    double lastTime = glfwGetTime();
-    int nbFrames = 0;
+    // For logging seconds per frame
+    //double lastTime = glfwGetTime();
+    //int nbFrames = 0;
 
     while (!glfwWindowShouldClose(window))
     {
-        logSecondsPerFrame(lastTime, nbFrames);
+        //logSecondsPerFrame(lastTime, nbFrames);
 
         display();
 
