@@ -1,10 +1,11 @@
 #include "graphics.h"
 #include <fstream>
-#include <sstream>
-#include <stdlib.h>
 #include <stdio.h>
 
 const std::string SHADER_DIR = "shaders/";
+
+// TODO(shaw): get rid of streams and stdlib shit, cause its fucking everything up
+// just use the c shit you learned in K&R
 
 std::string FindFileOrThrow( const std::string &strBasename )
 {
@@ -26,17 +27,41 @@ std::string FindFileOrThrow( const std::string &strBasename )
 GLuint LoadShader(GLenum eShaderType, const std::string &strShaderFilename)
 {
     std::string strFilename = FindFileOrThrow(strShaderFilename);
-    std::ifstream shaderFile(strFilename.c_str());
-    std::stringstream shaderData;
-    shaderData << shaderFile.rdbuf();
-    shaderFile.close();
+    
+    // read shader file into a buffer
+    char *buffer = NULL;
+    long length;
+    FILE *fp = fopen(strFilename.c_str(), "r");
+
+    if (fp)
+    {
+        fseek(fp, 0, SEEK_END);
+        length = ftell(fp);
+        fseek(fp, 0, SEEK_SET);
+        buffer = (char *)malloc(length + 1); // for null character
+        if (buffer)
+        {
+            fread(buffer, 1, length, fp);
+            buffer[length] = '\0';
+        }
+        fclose(fp);
+    }
+
+    if (!buffer)
+    {
+        printf("Error reading shader %s\n", strFilename.c_str());
+        throw;
+    }
+
+    const GLchar *source = (const GLchar *)buffer;
 
     GLuint shader = glCreateShader(eShaderType);
-
-    const GLchar *source = (const GLchar *)shaderData.str().c_str();
+    
     glShaderSource(shader, 1, &source, 0);
 
     glCompileShader(shader);
+
+    free(buffer);
 
     // Handle compilation error
     GLint isCompiled = 0;
@@ -99,40 +124,6 @@ GLuint CreateProgram(const std::vector<GLuint> &shaderList)
 
 	return program;
 }
-
-//GLuint CreateShader(GLenum eShaderType, const std::string &strShaderFile)
-//{
-	//GLuint shader = glCreateShader(eShaderType);
-	//const char *strFileData = strShaderFile.c_str();
-	//glShaderSource(shader, 1, &strFileData, NULL);
-
-	//glCompileShader(shader);
-
-	//GLint status;
-	//glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
-	//if (status == GL_FALSE)
-	//{
-		//GLint infoLogLength;
-		//glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &infoLogLength);
-
-		//GLchar *strInfoLog = new GLchar[infoLogLength + 1];
-		//glGetShaderInfoLog(shader, infoLogLength, NULL, strInfoLog);
-
-		//const char *strShaderType = NULL;
-		//switch(eShaderType)
-		//{
-		//case GL_VERTEX_SHADER: strShaderType = "vertex"; break;
-		//case GL_GEOMETRY_SHADER: strShaderType = "geometry"; break;
-		//case GL_FRAGMENT_SHADER: strShaderType = "fragment"; break;
-		//}
-
-		//fprintf(stderr, "Compile failure in %s shader:\n%s\n", strShaderType, strInfoLog);
-		//delete[] strInfoLog;
-	//}
-
-	//return shader;
-//}
-
 
 void logSecondsPerFrame(double &lastTime, int &nbFrames) 
 {

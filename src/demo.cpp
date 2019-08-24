@@ -1,6 +1,7 @@
 #include "graphics.h" 
 
 GLuint theProgram;
+GLuint uniElapsedTime;
 GLuint vbo;
 GLuint vao;
 
@@ -16,21 +17,23 @@ const float vertexData[] = {
 void init()
 {
 	// Initialize gpu program
-    {
 	std::vector<GLuint> shaderList;
-	shaderList.push_back(LoadShader(GL_VERTEX_SHADER, "color.vert"));
-	shaderList.push_back(LoadShader(GL_FRAGMENT_SHADER, "color.frag"));
+	shaderList.push_back(LoadShader(GL_VERTEX_SHADER, "shader.vert"));
+	shaderList.push_back(LoadShader(GL_FRAGMENT_SHADER, "shader.frag"));
 	theProgram = CreateProgram(shaderList);
 	std::for_each(shaderList.begin(), shaderList.end(), glDeleteShader);
-    }
 
 	// Initialize Vertex Buffer
-    {
 	glGenBuffers(1, &vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertexData), vertexData, GL_STATIC_DRAW);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
-    }
+
+    // Initialize uniforms
+    GLuint uniLoopDuration = glGetUniformLocation(theProgram, "loopDuration");
+    glUseProgram(theProgram);
+    glUniform1f(uniLoopDuration, 5.0f);
+    uniElapsedTime = glGetUniformLocation(theProgram, "elapsedTime");
 
     // bind vertex array object to context
 	glGenVertexArrays(1, &vao);
@@ -44,6 +47,10 @@ void display()
 
 	glUseProgram(theProgram);
 
+    // pass uniform data
+    glUniform1f(uniElapsedTime, glfwGetTime()); 
+
+    // pass vertex data
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
 	glEnableVertexAttribArray(0);
 	glEnableVertexAttribArray(1);
