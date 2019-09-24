@@ -5,7 +5,7 @@
 const std::string SHADER_DIR = "shaders/";
 
 // TODO(shaw): get rid of streams and stdlib shit, cause its fucking everything up
-// just use the c shit you learned in K&R
+// just use the c you learned in K&R
 
 std::string FindFileOrThrow( const std::string &strBasename )
 {
