@@ -2,115 +2,22 @@
 
 GLuint theProgram;
 GLuint uniElapsedTime;
-GLuint uniOffset;
 GLuint vbo;
 GLuint vao;
 
-GLuint texture;
 GLuint sampler;
 GLubyte *textureData;
 const int texUnit = 0;
 
+// fullscreen
 const float vertexData[] = {
-	 0.25f,  0.25f, 0.75f, 1.0f,
-	 0.25f, -0.25f, 0.75f, 1.0f,
-	-0.25f,  0.25f, 0.75f, 1.0f,
+    -1.0f, -1.0f, 0.0f, 1.0f,
+    -1.0f, 1.0f, 0.0f, 1.0f,
+    1.0f, 1.0f, 0.0f, 1.0f,
 
-	 0.25f, -0.25f, 0.75f, 1.0f,
-	-0.25f, -0.25f, 0.75f, 1.0f,
-	-0.25f,  0.25f, 0.75f, 1.0f,
-
-	 0.25f,  0.25f, -0.75f, 1.0f,
-	-0.25f,  0.25f, -0.75f, 1.0f,
-	 0.25f, -0.25f, -0.75f, 1.0f,
-
-	 0.25f, -0.25f, -0.75f, 1.0f,
-	-0.25f,  0.25f, -0.75f, 1.0f,
-	-0.25f, -0.25f, -0.75f, 1.0f,
-
-	-0.25f,  0.25f,  0.75f, 1.0f,
-	-0.25f, -0.25f,  0.75f, 1.0f,
-	-0.25f, -0.25f, -0.75f, 1.0f,
-
-	-0.25f,  0.25f,  0.75f, 1.0f,
-	-0.25f, -0.25f, -0.75f, 1.0f,
-	-0.25f,  0.25f, -0.75f, 1.0f,
-
-	 0.25f,  0.25f,  0.75f, 1.0f,
-	 0.25f, -0.25f, -0.75f, 1.0f,
-	 0.25f, -0.25f,  0.75f, 1.0f,
-
-	 0.25f,  0.25f,  0.75f, 1.0f,
-	 0.25f,  0.25f, -0.75f, 1.0f,
-	 0.25f, -0.25f, -0.75f, 1.0f,
-
-	 0.25f,  0.25f, -0.75f, 1.0f,
-	 0.25f,  0.25f,  0.75f, 1.0f,
-	-0.25f,  0.25f,  0.75f, 1.0f,
-
-	 0.25f,  0.25f, -0.75f, 1.0f,
-	-0.25f,  0.25f,  0.75f, 1.0f,
-	-0.25f,  0.25f, -0.75f, 1.0f,
-
-	 0.25f, -0.25f, -0.75f, 1.0f,
-	-0.25f, -0.25f,  0.75f, 1.0f,
-	 0.25f, -0.25f,  0.75f, 1.0f,
-
-	 0.25f, -0.25f, -0.75f, 1.0f,
-	-0.25f, -0.25f, -0.75f, 1.0f,
-	-0.25f, -0.25f,  0.75f, 1.0f,
-
-
-
-
-	0.0f, 0.0f, 1.0f, 1.0f,
-	0.0f, 0.0f, 1.0f, 1.0f,
-	0.0f, 0.0f, 1.0f, 1.0f,
-
-	0.0f, 0.0f, 1.0f, 1.0f,
-	0.0f, 0.0f, 1.0f, 1.0f,
-	0.0f, 0.0f, 1.0f, 1.0f,
-
-	0.8f, 0.8f, 0.8f, 1.0f,
-	0.8f, 0.8f, 0.8f, 1.0f,
-	0.8f, 0.8f, 0.8f, 1.0f,
-
-	0.8f, 0.8f, 0.8f, 1.0f,
-	0.8f, 0.8f, 0.8f, 1.0f,
-	0.8f, 0.8f, 0.8f, 1.0f,
-
-	0.0f, 1.0f, 0.0f, 1.0f,
-	0.0f, 1.0f, 0.0f, 1.0f,
-	0.0f, 1.0f, 0.0f, 1.0f,
-
-	0.0f, 1.0f, 0.0f, 1.0f,
-	0.0f, 1.0f, 0.0f, 1.0f,
-	0.0f, 1.0f, 0.0f, 1.0f,
-
-	0.5f, 0.5f, 0.0f, 1.0f,
-	0.5f, 0.5f, 0.0f, 1.0f,
-	0.5f, 0.5f, 0.0f, 1.0f,
-
-	0.5f, 0.5f, 0.0f, 1.0f,
-	0.5f, 0.5f, 0.0f, 1.0f,
-	0.5f, 0.5f, 0.0f, 1.0f,
-
-	1.0f, 0.0f, 0.0f, 1.0f,
-	1.0f, 0.0f, 0.0f, 1.0f,
-	1.0f, 0.0f, 0.0f, 1.0f,
-
-	1.0f, 0.0f, 0.0f, 1.0f,
-	1.0f, 0.0f, 0.0f, 1.0f,
-	1.0f, 0.0f, 0.0f, 1.0f,
-
-	0.0f, 1.0f, 1.0f, 1.0f,
-	0.0f, 1.0f, 1.0f, 1.0f,
-	0.0f, 1.0f, 1.0f, 1.0f,
-
-	0.0f, 1.0f, 1.0f, 1.0f,
-	0.0f, 1.0f, 1.0f, 1.0f,
-	0.0f, 1.0f, 1.0f, 1.0f,
-
+    -1.0f, -1.0f, 0.0f, 1.0f,
+    1.0f, 1.0f, 0.0f, 1.0f,
+    1.0f, -1.0f, 0.0f, 1.0f
 };
 
 void init()
@@ -133,10 +40,9 @@ void init()
     glUseProgram(theProgram);
     glUniform1f(uniLoopDuration, 5.0f);
     uniElapsedTime = glGetUniformLocation(theProgram, "elapsedTime");
-    uniOffset = glGetUniformLocation(theProgram, "offset");
-    glUniform2f(uniOffset, 0.5f, 0.25f);
 
     // Initialize texture
+    GLuint texture;
     textureData = new GLubyte[100];    
     memset(textureData, 255, 100);
     printf("middle check: %d\n", textureData[50]);
@@ -181,17 +87,15 @@ void display()
     glUniform1f(uniElapsedTime, glfwGetTime()); 
 
     // pass vertex data
-    size_t colorData = sizeof(vertexData) / 2;
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
 	glEnableVertexAttribArray(0);
 	glEnableVertexAttribArray(1);
 	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0);
-	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, (void*)colorData);
+	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, 0);
 
-	glDrawArrays(GL_TRIANGLES, 0, 36);
+	glDrawArrays(GL_TRIANGLES, 0, 6);
 
 	glDisableVertexAttribArray(0);
 	glDisableVertexAttribArray(1);
-	glUseProgram(0);
+	glUseProgram(0);   
 }
-
