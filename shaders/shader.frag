@@ -1,11 +1,10 @@
 #version 410
 
-uniform sampler1D theTexture;
+smooth in vec4 frag_color;
 
-out vec4 outputColor;
+out vec4 output_color;
 
 void main()
 {
-    float texVal = texture(theTexture, 40).r;
-    outputColor = vec4(0.0, texVal, 0.0, 1.0); 
+    output_color = frag_color;
 }

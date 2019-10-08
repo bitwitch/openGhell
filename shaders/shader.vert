@@ -1,17 +1,18 @@
-#version 410
+#version 330
 
 layout (location = 0) in vec4 position;
 layout (location = 1) in vec4 color;
 
-uniform vec2 offset;
-uniform sampler1D theTexture;
+uniform float elapsed_time;
+uniform vec2 v_offset;
+uniform mat4 perspective_matrix;
 
-smooth out vec4 theColor;
+smooth out vec4 frag_color;
 
 void main()
 {
-	gl_Position = position;
-    float texVal = texture(theTexture, 40).r;
-    theColor = vec4(0.0, texVal, 0.0, 1.0); 
-	//theColor = color;
+    vec4 camera_pos = position + vec4(v_offset.x, v_offset.y, 0.0, 0.0);
+
+	gl_Position = perspective_matrix * camera_pos;
+	frag_color = color;
 }
