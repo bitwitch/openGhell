@@ -8,6 +8,9 @@ GLuint uniform_v_offset;
 GLuint vbo;
 GLuint vao;
 
+float perspective_matrix[16];
+const float frustum_scale = 1.0f;
+
 const float vertex_data[] = {
 	 0.25f,  0.25f, -1.25f, 1.0f,
 	 0.25f, -0.25f, -1.25f, 1.0f,
@@ -126,18 +129,17 @@ void init()
     glUniform2f(uniform_v_offset, 0.5f, 0.5f);
     uniform_perspective_matrix = glGetUniformLocation(shader_program, "perspective_matrix");
 
-    float frustum_scale = 1.0f; float z_near = 0.5f; float z_far = 3.0f;
+    float z_near = 0.5f, z_far = 3.0f;
 
-	float p_mat[16];
-	memset(p_mat, 0, sizeof(float) * 16);
+	memset(perspective_matrix, 0, sizeof(float) * 16);
 
-	p_mat[0] = frustum_scale;
-	p_mat[5] = frustum_scale;
-	p_mat[10] = (z_far + z_near) / (z_near - z_far);
-	p_mat[14] = (2 * z_far * z_near) / (z_near - z_far);
-	p_mat[11] = -1.0f;
+	perspective_matrix[0] = frustum_scale;
+	perspective_matrix[5] = frustum_scale;
+	perspective_matrix[10] = (z_far + z_near) / (z_near - z_far);
+	perspective_matrix[14] = (2 * z_far * z_near) / (z_near - z_far);
+	perspective_matrix[11] = -1.0f;
 
-    glUniformMatrix4fv(uniform_perspective_matrix, 1, GL_FALSE, p_mat);
+    glUniformMatrix4fv(uniform_perspective_matrix, 1, GL_FALSE, perspective_matrix);
 
 // Initialize Vertex Buffer
 	glGenBuffers(1, &vbo);
@@ -176,3 +178,14 @@ void display()
 	glDrawArrays(GL_TRIANGLES, 0, 36);
 }
 
+void window_resize_callback(GLFWwindow* window, int width, int height)
+{
+    perspective_matrix[0] = frustum_scale / (width / (float)height);
+	perspective_matrix[5] = frustum_scale;
+
+	glUseProgram(shader_program);
+	glUniformMatrix4fv(uniform_perspective_matrix, 1, GL_FALSE, perspective_matrix);
+	glUseProgram(0);
+
+	glViewport(0, 0, (GLsizei)width, (GLsizei)height);
+}

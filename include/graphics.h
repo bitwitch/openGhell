@@ -11,5 +11,5 @@ GLuint CreateProgram(const std::vector<GLuint> &shaderList);
 
 void init();
 void display();
-
+void window_resize_callback(GLFWwindow* window, int width, int height);
 

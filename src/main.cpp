@@ -174,6 +174,8 @@ int main(void)
 
     glfwSetKeyCallback(window, key_callback);
 
+    glfwSetWindowSizeCallback(window, window_resize_callback);
+
     glfwMakeContextCurrent(window);
     gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
     glfwSwapInterval(1);
