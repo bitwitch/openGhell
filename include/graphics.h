@@ -5,6 +5,8 @@
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 GLuint LoadShader(GLenum eShaderType, const std::string &strShaderFilename);
 GLuint CreateProgram(const std::vector<GLuint> &shaderList);
