@@ -9,14 +9,14 @@ const std::string SHADER_DIR = "shaders/";
 
 std::string FindFileOrThrow( const std::string &strBasename )
 {
-    // try local dir
+    // try 'shaders' dir
     std::string strFilename = SHADER_DIR + strBasename;
     std::ifstream testFile(strFilename.c_str());
     if(testFile.is_open())
         return strFilename;
     
-    // try global dir
-    strFilename = "../" + SHADER_DIR + strBasename;
+    // try current dir 
+    strFilename = "./" + strBasename;
     testFile.open(strFilename.c_str());
     if(testFile.is_open())
         return strFilename;
