@@ -4,9 +4,6 @@ GLuint shader_program;
 
 GLuint uniform_elapsed_time;
 
-GLuint uniform_perspective_matrix;
-float perspective_matrix[16];
-
 GLuint uniform_model_to_camera_matrix;
 GLuint uniform_camera_to_clip_matrix;
 
@@ -15,52 +12,109 @@ GLuint vao;
 
 GLuint element_array_object;
 
-const int vertex_count = 8;
-
 glm::mat4 camera_to_clip_matrix(0.0f);
 
 #define ARRAY_COUNT(array) (sizeof(array)/sizeof(array[0]))
 
+const int vertex_count = 24;
+
+#define RED_COLOR 1.0f, 0.0f, 0.0f, 1.0f
 #define GREEN_COLOR 0.0f, 1.0f, 0.0f, 1.0f
 #define BLUE_COLOR 	0.0f, 0.0f, 1.0f, 1.0f
-#define RED_COLOR 1.0f, 0.0f, 0.0f, 1.0f
-#define GREY_COLOR 0.8f, 0.8f, 0.8f, 1.0f
-#define BROWN_COLOR 0.5f, 0.5f, 0.0f, 1.0f
+
+#define YELLOW_COLOR 1.0f, 1.0f, 0.0f, 1.0f
+#define CYAN_COLOR 0.0f, 1.0f, 1.0f, 1.0f
+#define MAGENTA_COLOR 	1.0f, 0.0f, 1.0f, 1.0f
 
 const float vertex_data[] =
 {
+	//Front
 	 1.0f,  1.0f,  1.0f,
-	-1.0f, -1.0f,  1.0f,
-	-1.0f,  1.0f, -1.0f,
-	 1.0f, -1.0f, -1.0f,
-
-	-1.0f, -1.0f, -1.0f,
-	 1.0f,  1.0f, -1.0f,
 	 1.0f, -1.0f,  1.0f,
+	-1.0f, -1.0f,  1.0f,
 	-1.0f,  1.0f,  1.0f,
 
-	GREEN_COLOR,
-	BLUE_COLOR,
-	RED_COLOR,
-	BROWN_COLOR,
+	//Top
+	 1.0f,  1.0f,  1.0f,
+	-1.0f,  1.0f,  1.0f,
+	-1.0f,  1.0f, -1.0f,
+	 1.0f,  1.0f, -1.0f,
+
+	//Left
+	 1.0f,  1.0f,  1.0f,
+	 1.0f,  1.0f, -1.0f,
+	 1.0f, -1.0f, -1.0f,
+	 1.0f, -1.0f,  1.0f,
+
+	//Back
+	 1.0f,  1.0f, -1.0f,
+	-1.0f,  1.0f, -1.0f,
+	-1.0f, -1.0f, -1.0f,
+	 1.0f, -1.0f, -1.0f,
+
+	//Bottom
+	 1.0f, -1.0f,  1.0f,
+	 1.0f, -1.0f, -1.0f,
+	-1.0f, -1.0f, -1.0f,
+	-1.0f, -1.0f,  1.0f,
+
+	//Right
+	-1.0f,  1.0f,  1.0f,
+	-1.0f, -1.0f,  1.0f,
+	-1.0f, -1.0f, -1.0f,
+	-1.0f,  1.0f, -1.0f,
+
 
 	GREEN_COLOR,
+	GREEN_COLOR,
+	GREEN_COLOR,
+	GREEN_COLOR,
+
 	BLUE_COLOR,
+	BLUE_COLOR,
+	BLUE_COLOR,
+	BLUE_COLOR,
+
 	RED_COLOR,
-	BROWN_COLOR,
+	RED_COLOR,
+	RED_COLOR,
+	RED_COLOR,
+
+	YELLOW_COLOR,
+	YELLOW_COLOR,
+	YELLOW_COLOR,
+	YELLOW_COLOR,
+
+	CYAN_COLOR,
+	CYAN_COLOR,
+	CYAN_COLOR,
+	CYAN_COLOR,
+
+	MAGENTA_COLOR,
+	MAGENTA_COLOR,
+	MAGENTA_COLOR,
+	MAGENTA_COLOR,
 };
 
 const GLshort vertex_indices[] =
 {
 	0, 1, 2,
-	1, 0, 3,
 	2, 3, 0,
-	3, 2, 1,
 
-	5, 4, 6,
-	4, 5, 7,
-	7, 6, 4,
-	6, 7, 5,
+	4, 5, 6,
+	6, 7, 4,
+
+	8, 9, 10,
+	10, 11, 8,
+
+	12, 13, 14,
+	14, 15, 12,
+
+	16, 17, 18,
+	18, 19, 16,
+
+	20, 21, 22,
+	22, 23, 20,
 };
 
 float calculate_frustum_scale(float fFovDeg)
@@ -72,58 +126,379 @@ float calculate_frustum_scale(float fFovDeg)
 
 float frustum_scale = calculate_frustum_scale(45.0f);
 
-glm::vec3 offset_stationary(float elapsed_time)
+inline float Deg_To_Rad(float angle_deg)
 {
-	return glm::vec3(0.0f, 0.0f, -20.0f);
+    return angle_deg * 3.14159f / 180.0f;
 }
 
-glm::vec3 offset_oval(float elapsed_time)
+inline float Clamp(float value, float min, float max)
 {
-	const float loop_duration = 3.0f;
-	const float scale = 3.14159f * 2.0f / loop_duration;
-
-	float time_through_loop = fmodf(elapsed_time, loop_duration);
-
-	return glm::vec3(cosf(time_through_loop * scale) * 4.f,
-		sinf(time_through_loop * scale) * 6.f,
-		-20.0f);
+	if(value < min) return min;
+	if(value > max) return max;
+	return value;
 }
 
-glm::vec3 offset_bottom_circle(float elapsed_time)
+glm::mat3 Rotate_X(float angle_deg)
 {
-	const float loop_duration = 12.0f;
-	const float scale = 3.14159f * 2.0f / loop_duration;
+	float angle_rad = Deg_To_Rad(angle_deg);
+	float cosine = cosf(angle_rad);
+	float sine = sinf(angle_rad);
 
-	float time_through_loop = fmodf(elapsed_time, loop_duration);
-
-	return glm::vec3(cosf(time_through_loop * scale) * 5.f,
-		-3.5f,
-		sinf(time_through_loop * scale) * 5.f - 20.0f);
+	glm::mat3 result(1.0f);
+	result[1].y = cosine; result[2].y = -sine;
+	result[1].z = sine; result[2].z = cosine;
+	return result;
 }
 
-struct Instance
+glm::mat3 Rotate_Y(float angle_deg)
 {
-	typedef glm::vec3(*Offset_Func)(float);
+	float angle_rad = Deg_To_Rad(angle_deg);
+	float cosine = cosf(angle_rad);
+	float sine = sinf(angle_rad);
 
-	Offset_Func calculate_offset;
+	glm::mat3 result(1.0f);
+	result[0].x = cosine; result[2].x = sine;
+	result[0].z = -sine; result[2].z = cosine;
+	return result;
+}
 
-	glm::mat4 construct_matrix(float elapsed_time)
+glm::mat3 Rotate_Z(float angle_deg)
+{
+	float angle_rad = Deg_To_Rad(angle_deg);
+	float cosine = cosf(angle_rad);
+	float sine = sinf(angle_rad);
+
+	glm::mat3 result(1.0f);
+	result[0].x = cosine; result[1].x = -sine;
+	result[0].y = sine; result[1].y = cosine;
+	return result;
+}
+
+class Matrix_Stack
+{
+public:
+	Matrix_Stack()
+		: m_currMat(1.0f)
 	{
-		glm::mat4 result(1.0f);
-		result[3] = glm::vec4(calculate_offset(elapsed_time), 1.0f);
-		return result;
 	}
+
+	const glm::mat4 &Top()
+	{
+		return m_currMat;
+	}
+
+	void Rotate_X(float fAngDeg)
+	{
+		m_currMat = m_currMat * glm::mat4(::Rotate_X(fAngDeg));
+	}
+
+	void Rotate_Y(float fAngDeg)
+	{
+		m_currMat = m_currMat * glm::mat4(::Rotate_Y(fAngDeg));
+	}
+
+	void Rotate_Z(float fAngDeg)
+	{
+		m_currMat = m_currMat * glm::mat4(::Rotate_Z(fAngDeg));
+	}
+
+	void Scale(const glm::vec3 &scaleVec)
+	{
+		glm::mat4 scaleMat(1.0f);
+		scaleMat[0].x = scaleVec.x;
+		scaleMat[1].y = scaleVec.y;
+		scaleMat[2].z = scaleVec.z;
+
+		m_currMat = m_currMat * scaleMat;
+	}
+
+	void Translate(const glm::vec3 &offsetVec)
+	{
+		glm::mat4 translateMat(1.0f);
+		translateMat[3] = glm::vec4(offsetVec, 1.0f);
+
+		m_currMat = m_currMat * translateMat;
+	}
+
+	void Push()
+	{
+		m_matrices.push(m_currMat);
+	}
+
+	void Pop()
+	{
+		m_currMat = m_matrices.top();
+		m_matrices.pop();
+	}
+
+private:
+	glm::mat4 m_currMat;
+	std::stack<glm::mat4> m_matrices;
 };
 
-
-Instance instances[] =
+class Hierarchy
 {
-	{ offset_stationary },
-	{ offset_oval },
-	{ offset_bottom_circle },
+public:
+	Hierarchy()
+		: posBase(glm::vec3(3.0f, -5.0f, -40.0f))
+		, angBase(-45.0f)
+		, posBaseLeft(glm::vec3(2.0f, 0.0f, 0.0f))
+		, posBaseRight(glm::vec3(-2.0f, 0.0f, 0.0f))
+		, scaleBaseZ(3.0f)
+		, angUpperArm(-33.75f)
+		, sizeUpperArm(9.0f)
+		, posLowerArm(glm::vec3(0.0f, 0.0f, 8.0f))
+		, angLowerArm(146.25f)
+		, lenLowerArm(5.0f)
+		, widthLowerArm(1.5f)
+		, posWrist(glm::vec3(0.0f, 0.0f, 5.0f))
+		, angWristRoll(0.0f)
+		, angWristPitch(67.5f)
+		, lenWrist(2.0f)
+		, widthWrist(2.0f)
+		, posLeftFinger(glm::vec3(1.0f, 0.0f, 1.0f))
+		, posRightFinger(glm::vec3(-1.0f, 0.0f, 1.0f))
+		, angFingerOpen(180.0f)
+		, lenFinger(2.0f)
+		, widthFinger(0.5f)
+		, angLowerFinger(45.0f)
+	{}
+
+	void Draw()
+	{
+		Matrix_Stack modelToCameraStack;
+
+		glUseProgram(shader_program);
+		glBindVertexArray(vao);
+
+		modelToCameraStack.Translate(posBase);
+		modelToCameraStack.Rotate_Y(angBase);
+
+		//Draw left base.
+		{
+			modelToCameraStack.Push();
+			modelToCameraStack.Translate(posBaseLeft);
+			modelToCameraStack.Scale(glm::vec3(1.0f, 1.0f, scaleBaseZ));
+			glUniformMatrix4fv(uniform_model_to_camera_matrix, 1, GL_FALSE, glm::value_ptr(modelToCameraStack.Top()));
+			glDrawElements(GL_TRIANGLES, ARRAY_COUNT(vertex_indices), GL_UNSIGNED_SHORT, 0);
+			modelToCameraStack.Pop();
+		}
+
+		//Draw right base.
+		{
+			modelToCameraStack.Push();
+			modelToCameraStack.Translate(posBaseRight);
+			modelToCameraStack.Scale(glm::vec3(1.0f, 1.0f, scaleBaseZ));
+			glUniformMatrix4fv(uniform_model_to_camera_matrix, 1, GL_FALSE, glm::value_ptr(modelToCameraStack.Top()));
+			glDrawElements(GL_TRIANGLES, ARRAY_COUNT(vertex_indices), GL_UNSIGNED_SHORT, 0);
+			modelToCameraStack.Pop();
+		}
+
+		//Draw main arm.
+		DrawUpperArm(modelToCameraStack);
+
+		glBindVertexArray(0);
+		glUseProgram(0);
+	}
+
+#define STANDARD_ANGLE_INCREMENT 11.25f
+#define SMALL_ANGLE_INCREMENT 9.0f
+
+	void AdjBase(bool bIncrement)
+	{
+		angBase += bIncrement ? STANDARD_ANGLE_INCREMENT : -STANDARD_ANGLE_INCREMENT;
+		angBase = fmodf(angBase, 360.0f);
+	}
+
+	void AdjUpperArm(bool bIncrement)
+	{
+		angUpperArm += bIncrement ? STANDARD_ANGLE_INCREMENT : -STANDARD_ANGLE_INCREMENT;
+		angUpperArm = Clamp(angUpperArm, -90.0f, 0.0f);
+	}
+
+	void AdjLowerArm(bool bIncrement)
+	{
+		angLowerArm += bIncrement ? STANDARD_ANGLE_INCREMENT : -STANDARD_ANGLE_INCREMENT;
+		angLowerArm = Clamp(angLowerArm, 0.0f, 146.25f);
+	}
+
+	void AdjWristPitch(bool bIncrement)
+	{
+		angWristPitch += bIncrement ? STANDARD_ANGLE_INCREMENT : -STANDARD_ANGLE_INCREMENT;
+		angWristPitch = Clamp(angWristPitch, 0.0f, 90.0f);
+	}
+
+	void AdjWristRoll(bool bIncrement)
+	{
+		angWristRoll += bIncrement ? STANDARD_ANGLE_INCREMENT : -STANDARD_ANGLE_INCREMENT;
+		angWristRoll = fmodf(angWristRoll, 360.0f);
+	}
+
+	void AdjFingerOpen(bool bIncrement)
+	{
+		angFingerOpen += bIncrement ? SMALL_ANGLE_INCREMENT : -SMALL_ANGLE_INCREMENT;
+		angFingerOpen = Clamp(angFingerOpen, 9.0f, 180.0f);
+	}
+
+	void WritePose()
+	{
+		printf("angBase:\t%f\n", angBase);
+		printf("angUpperArm:\t%f\n", angUpperArm);
+		printf("angLowerArm:\t%f\n", angLowerArm);
+		printf("angWristPitch:\t%f\n", angWristPitch);
+		printf("angWristRoll:\t%f\n", angWristRoll);
+		printf("angFingerOpen:\t%f\n", angFingerOpen);
+		printf("\n");
+	}
+
+private:
+	void DrawFingers(Matrix_Stack &modelToCameraStack)
+	{
+		//Draw left finger
+		modelToCameraStack.Push();
+		modelToCameraStack.Translate(posLeftFinger);
+		modelToCameraStack.Rotate_Y(angFingerOpen);
+
+		modelToCameraStack.Push();
+		modelToCameraStack.Translate(glm::vec3(0.0f, 0.0f, lenFinger / 2.0f));
+		modelToCameraStack.Scale(glm::vec3(widthFinger / 2.0f, widthFinger/ 2.0f, lenFinger / 2.0f));
+		glUniformMatrix4fv(uniform_model_to_camera_matrix, 1, GL_FALSE, glm::value_ptr(modelToCameraStack.Top()));
+		glDrawElements(GL_TRIANGLES, ARRAY_COUNT(vertex_indices), GL_UNSIGNED_SHORT, 0);
+		modelToCameraStack.Pop();
+
+		{
+			//Draw left lower finger
+			modelToCameraStack.Push();
+			modelToCameraStack.Translate(glm::vec3(0.0f, 0.0f, lenFinger));
+			modelToCameraStack.Rotate_Y(-angLowerFinger);
+
+			modelToCameraStack.Push();
+			modelToCameraStack.Translate(glm::vec3(0.0f, 0.0f, lenFinger / 2.0f));
+			modelToCameraStack.Scale(glm::vec3(widthFinger / 2.0f, widthFinger/ 2.0f, lenFinger / 2.0f));
+			glUniformMatrix4fv(uniform_model_to_camera_matrix, 1, GL_FALSE, glm::value_ptr(modelToCameraStack.Top()));
+			glDrawElements(GL_TRIANGLES, ARRAY_COUNT(vertex_indices), GL_UNSIGNED_SHORT, 0);
+			modelToCameraStack.Pop();
+
+			modelToCameraStack.Pop();
+		}
+
+		modelToCameraStack.Pop();
+
+		//Draw right finger
+		modelToCameraStack.Push();
+		modelToCameraStack.Translate(posRightFinger);
+		modelToCameraStack.Rotate_Y(-angFingerOpen);
+
+		modelToCameraStack.Push();
+		modelToCameraStack.Translate(glm::vec3(0.0f, 0.0f, lenFinger / 2.0f));
+		modelToCameraStack.Scale(glm::vec3(widthFinger / 2.0f, widthFinger/ 2.0f, lenFinger / 2.0f));
+		glUniformMatrix4fv(uniform_model_to_camera_matrix, 1, GL_FALSE, glm::value_ptr(modelToCameraStack.Top()));
+		glDrawElements(GL_TRIANGLES, ARRAY_COUNT(vertex_indices), GL_UNSIGNED_SHORT, 0);
+		modelToCameraStack.Pop();
+
+		{
+			//Draw right lower finger
+			modelToCameraStack.Push();
+			modelToCameraStack.Translate(glm::vec3(0.0f, 0.0f, lenFinger));
+			modelToCameraStack.Rotate_Y(angLowerFinger);
+
+			modelToCameraStack.Push();
+			modelToCameraStack.Translate(glm::vec3(0.0f, 0.0f, lenFinger / 2.0f));
+			modelToCameraStack.Scale(glm::vec3(widthFinger / 2.0f, widthFinger/ 2.0f, lenFinger / 2.0f));
+			glUniformMatrix4fv(uniform_model_to_camera_matrix, 1, GL_FALSE, glm::value_ptr(modelToCameraStack.Top()));
+			glDrawElements(GL_TRIANGLES, ARRAY_COUNT(vertex_indices), GL_UNSIGNED_SHORT, 0);
+			modelToCameraStack.Pop();
+
+			modelToCameraStack.Pop();
+		}
+
+		modelToCameraStack.Pop();
+	}
+
+	void DrawWrist(Matrix_Stack &modelToCameraStack)
+	{
+		modelToCameraStack.Push();
+		modelToCameraStack.Translate(posWrist);
+		modelToCameraStack.Rotate_Z(angWristRoll);
+		modelToCameraStack.Rotate_X(angWristPitch);
+
+		modelToCameraStack.Push();
+		modelToCameraStack.Scale(glm::vec3(widthWrist / 2.0f, widthWrist/ 2.0f, lenWrist / 2.0f));
+		glUniformMatrix4fv(uniform_model_to_camera_matrix, 1, GL_FALSE, glm::value_ptr(modelToCameraStack.Top()));
+		glDrawElements(GL_TRIANGLES, ARRAY_COUNT(vertex_indices), GL_UNSIGNED_SHORT, 0);
+		modelToCameraStack.Pop();
+
+		DrawFingers(modelToCameraStack);
+
+		modelToCameraStack.Pop();
+	}
+
+	void DrawLowerArm(Matrix_Stack &modelToCameraStack)
+	{
+		modelToCameraStack.Push();
+		modelToCameraStack.Translate(posLowerArm);
+		modelToCameraStack.Rotate_X(angLowerArm);
+
+		modelToCameraStack.Push();
+		modelToCameraStack.Translate(glm::vec3(0.0f, 0.0f, lenLowerArm / 2.0f));
+		modelToCameraStack.Scale(glm::vec3(widthLowerArm / 2.0f, widthLowerArm / 2.0f, lenLowerArm / 2.0f));
+		glUniformMatrix4fv(uniform_model_to_camera_matrix, 1, GL_FALSE, glm::value_ptr(modelToCameraStack.Top()));
+		glDrawElements(GL_TRIANGLES, ARRAY_COUNT(vertex_indices), GL_UNSIGNED_SHORT, 0);
+		modelToCameraStack.Pop();
+
+		DrawWrist(modelToCameraStack);
+
+		modelToCameraStack.Pop();
+	}
+
+	void DrawUpperArm(Matrix_Stack &modelToCameraStack)
+	{
+		modelToCameraStack.Push();
+		modelToCameraStack.Rotate_X(angUpperArm);
+
+		{
+			modelToCameraStack.Push();
+			modelToCameraStack.Translate(glm::vec3(0.0f, 0.0f, (sizeUpperArm / 2.0f) - 1.0f));
+			modelToCameraStack.Scale(glm::vec3(1.0f, 1.0f, sizeUpperArm / 2.0f));
+			glUniformMatrix4fv(uniform_model_to_camera_matrix, 1, GL_FALSE, glm::value_ptr(modelToCameraStack.Top()));
+			glDrawElements(GL_TRIANGLES, ARRAY_COUNT(vertex_indices), GL_UNSIGNED_SHORT, 0);
+			modelToCameraStack.Pop();
+		}
+
+		DrawLowerArm(modelToCameraStack);
+
+		modelToCameraStack.Pop();
+	}
+
+	glm::vec3		posBase;
+	float			angBase;
+
+	glm::vec3		posBaseLeft, posBaseRight;
+	float			scaleBaseZ;
+
+	float			angUpperArm;
+	float			sizeUpperArm;
+
+	glm::vec3		posLowerArm;
+	float			angLowerArm;
+	float			lenLowerArm;
+	float			widthLowerArm;
+
+	glm::vec3		posWrist;
+	float			angWristRoll;
+	float			angWristPitch;
+	float			lenWrist;
+	float			widthWrist;
+
+	glm::vec3		posLeftFinger, posRightFinger;
+	float			angFingerOpen;
+	float			lenFinger;
+	float			widthFinger;
+	float			angLowerFinger;
 };
 
-unsigned int num_instances = ARRAY_COUNT(instances);
+
+Hierarchy g_armature;
 
 void init()
 {
@@ -201,28 +576,45 @@ void display()
     float elapsed_time = glfwGetTime();
 
     // pass updated uniform data
-    glUniform1f(uniform_elapsed_time, elapsed_time); 
+    glUniform1f(uniform_elapsed_time, elapsed_time);
 
-    int i;
-    for(i = 0; i < num_instances; i++)
-	{
-		Instance &cur_inst = instances[i];
-		const glm::mat4 &transform_matrix = cur_inst.construct_matrix(elapsed_time);
-
-		glUniformMatrix4fv(uniform_model_to_camera_matrix, 1, GL_FALSE, glm::value_ptr(transform_matrix));
-		glDrawElements(GL_TRIANGLES, ARRAY_COUNT(vertex_indices), GL_UNSIGNED_SHORT, 0);
-	}
-
+    g_armature.Draw();
 }
 
 void window_resize_callback(GLFWwindow* window, int width, int height)
 {
-    perspective_matrix[0] = frustum_scale / (width / (float)height);
-	perspective_matrix[5] = frustum_scale;
+    camera_to_clip_matrix[0].x = frustum_scale / (width / (float)height);
+	camera_to_clip_matrix[1].y = frustum_scale;
 
 	glUseProgram(shader_program);
-	glUniformMatrix4fv(uniform_perspective_matrix, 1, GL_FALSE, perspective_matrix);
+	glUniformMatrix4fv(uniform_camera_to_clip_matrix, 1, GL_FALSE, glm::value_ptr(camera_to_clip_matrix));
 	glUseProgram(0);
 
 	glViewport(0, 0, (GLsizei)width, (GLsizei)height);
 }
+
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, GLFW_TRUE);
+
+	switch (key)
+	{
+	case GLFW_KEY_A: g_armature.AdjBase(true); break;
+	case GLFW_KEY_D: g_armature.AdjBase(false); break;
+	case GLFW_KEY_W: g_armature.AdjUpperArm(false); break;
+	case GLFW_KEY_S: g_armature.AdjUpperArm(true); break;
+	case GLFW_KEY_R: g_armature.AdjLowerArm(false); break;
+	case GLFW_KEY_F: g_armature.AdjLowerArm(true); break;
+	case GLFW_KEY_T: g_armature.AdjWristPitch(false); break;
+	case GLFW_KEY_G: g_armature.AdjWristPitch(true); break;
+	case GLFW_KEY_Z: g_armature.AdjWristRoll(true); break;
+	case GLFW_KEY_C: g_armature.AdjWristRoll(false); break;
+	case GLFW_KEY_Q: g_armature.AdjFingerOpen(true); break;
+	case GLFW_KEY_E: g_armature.AdjFingerOpen(false); break;
+	case GLFW_KEY_SPACE: g_armature.WritePose(); break;
+	}
+}
+
+
+
